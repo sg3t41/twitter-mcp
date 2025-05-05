@@ -1,5 +1,4 @@
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/enescinr-twitter-mcp-badge.png)](https://mseep.ai/app/enescinr-twitter-mcp)
-[![Verified on MseeP](https://mseep.ai/badge.svg)](https://mseep.ai/app/d2329f65-8770-402c-9c0e-a3d1c9851a2b)
 
 # Twitter MCP Server
 
