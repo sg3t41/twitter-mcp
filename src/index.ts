@@ -1,22 +1,24 @@
 #!/usr/bin/env node
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
   Tool,
   ErrorCode,
   McpError,
-  TextContent
-} from '@modelcontextprotocol/sdk/types.js';
-import { TwitterClient } from './twitter-api.js';
-import { ResponseFormatter } from './formatter.js';
+  TextContent,
+} from "@modelcontextprotocol/sdk/types.js";
+import { TwitterClient } from "./twitter-api.js";
+import { ResponseFormatter } from "./formatter.js";
 import {
-  Config, ConfigSchema,
-  PostTweetSchema, SearchTweetsSchema,
-  TwitterError
-} from './types.js';
-import dotenv from 'dotenv';
+  Config,
+  ConfigSchema,
+  PostTweetSchema,
+  SearchTweetsSchema,
+  TwitterError,
+} from "./types.js";
+import dotenv from "dotenv";
 
 export class TwitterServer {
   private server: Server;
@@ -30,14 +32,17 @@ export class TwitterServer {
     }
 
     this.client = new TwitterClient(config);
-    this.server = new Server({
-      name: 'twitter-mcp',
-      version: '1.0.0'
-    }, {
-      capabilities: {
-        tools: {}
-      }
-    });
+    this.server = new Server(
+      {
+        name: "twitter-mcp",
+        version: "1.0.0",
+      },
+      {
+        capabilities: {
+          tools: {},
+        },
+      },
+    );
 
     this.setupHandlers();
   }
@@ -45,12 +50,12 @@ export class TwitterServer {
   private setupHandlers(): void {
     // Error handler
     this.server.onerror = (error) => {
-      console.error('[MCP Error]:', error);
+      console.error("[MCP Error]:", error);
     };
 
     // Graceful shutdown
-    process.on('SIGINT', async () => {
-      console.error('Shutting down server...');
+    process.on("SIGINT", async () => {
+      console.error("Shutting down server...");
       await this.server.close();
       process.exit(0);
     });
@@ -64,45 +69,45 @@ export class TwitterServer {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
         {
-          name: 'post_tweet',
-          description: 'Post a new tweet to Twitter',
+          name: "post_tweet",
+          description: "Post a new tweet to Twitter",
           inputSchema: {
-            type: 'object',
+            type: "object",
             properties: {
               text: {
-                type: 'string',
-                description: 'The content of your tweet',
-                maxLength: 280
+                type: "string",
+                description: "The content of your tweet",
+                maxLength: 280,
               },
               reply_to_tweet_id: {
-                type: 'string',
-                description: 'Optional: ID of the tweet to reply to'
-              }
+                type: "string",
+                description: "Optional: ID of the tweet to reply to",
+              },
             },
-            required: ['text']
-          }
+            required: ["text"],
+          },
         } as Tool,
         {
-          name: 'search_tweets',
-          description: 'Search for tweets on Twitter',
+          name: "search_tweets",
+          description: "Search for tweets on Twitter",
           inputSchema: {
-            type: 'object',
+            type: "object",
             properties: {
               query: {
-                type: 'string',
-                description: 'Search query'
+                type: "string",
+                description: "Search query",
               },
               count: {
-                type: 'number',
-                description: 'Number of tweets to return (10-100)',
+                type: "number",
+                description: "Number of tweets to return (10-100)",
                 minimum: 10,
-                maximum: 100
-              }
+                maximum: 100,
+              },
             },
-            required: ['query', 'count']
-          }
-        } as Tool
-      ]
+            required: ["query", "count"],
+          },
+        } as Tool,
+      ],
     }));
 
     // Handle tool execution
@@ -112,14 +117,14 @@ export class TwitterServer {
 
       try {
         switch (name) {
-          case 'post_tweet':
+          case "post_tweet":
             return await this.handlePostTweet(args);
-          case 'search_tweets':
+          case "search_tweets":
             return await this.handleSearchTweets(args);
           default:
             throw new McpError(
               ErrorCode.MethodNotFound,
-              `Unknown tool: ${name}`
+              `Unknown tool: ${name}`,
             );
         }
       } catch (error) {
@@ -133,16 +138,21 @@ export class TwitterServer {
     if (!result.success) {
       throw new McpError(
         ErrorCode.InvalidParams,
-        `Invalid parameters: ${result.error.message}`
+        `Invalid parameters: ${result.error.message}`,
       );
     }
 
-    const tweet = await this.client.postTweet(result.data.text, result.data.reply_to_tweet_id);
+    const tweet = await this.client.postTweet(
+      result.data.text,
+      result.data.reply_to_tweet_id,
+    );
     return {
-      content: [{
-        type: 'text',
-        text: `Tweet posted successfully!\nURL: https://twitter.com/status/${tweet.id}`
-      }] as TextContent[]
+      content: [
+        {
+          type: "text",
+          text: `Tweet posted successfully!\nURL: https://twitter.com/status/${tweet.id}`,
+        },
+      ] as TextContent[],
     };
   }
 
@@ -151,26 +161,28 @@ export class TwitterServer {
     if (!result.success) {
       throw new McpError(
         ErrorCode.InvalidParams,
-        `Invalid parameters: ${result.error.message}`
+        `Invalid parameters: ${result.error.message}`,
       );
     }
 
     const { tweets, users } = await this.client.searchTweets(
       result.data.query,
-      result.data.count
+      result.data.count,
     );
 
     const formattedResponse = ResponseFormatter.formatSearchResponse(
       result.data.query,
       tweets,
-      users
+      users,
     );
 
     return {
-      content: [{
-        type: 'text',
-        text: ResponseFormatter.toMcpResponse(formattedResponse)
-      }] as TextContent[]
+      content: [
+        {
+          type: "text",
+          text: ResponseFormatter.toMcpResponse(formattedResponse),
+        },
+      ] as TextContent[],
     };
   }
 
@@ -182,49 +194,69 @@ export class TwitterServer {
     if (error instanceof TwitterError) {
       if (TwitterError.isRateLimit(error)) {
         return {
-          content: [{
-            type: 'text',
-            text: 'Rate limit exceeded. Please wait a moment before trying again.',
-            isError: true
-          }] as TextContent[]
+          content: [
+            {
+              type: "text",
+              text: "Rate limit exceeded. Please wait a moment before trying again.",
+              isError: true,
+            },
+          ] as TextContent[],
         };
       }
 
       return {
-        content: [{
-          type: 'text',
-          text: `Twitter API error: ${(error as TwitterError).message}`,
-          isError: true
-        }] as TextContent[]
+        content: [
+          {
+            type: "text",
+            text: `Twitter API error: ${(error as TwitterError).message}`,
+            isError: true,
+          },
+        ] as TextContent[],
       };
     }
 
-    console.error('Unexpected error:', error);
-    throw new McpError(
-      ErrorCode.InternalError,
-      'An unexpected error occurred'
-    );
+    console.error("Unexpected error:", error);
+    throw new McpError(ErrorCode.InternalError, "An unexpected error occurred");
   }
 
   async start(): Promise<void> {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.error('Twitter MCP server running on stdio');
+    console.error("Twitter MCP server running on stdio");
   }
 }
 
+// Configuration loader
+import { readFileSync } from "fs";
+
+function loadConfig(): Config {
+  // Check for config file argument
+  const configArgIndex = process.argv.indexOf("--config");
+  if (configArgIndex !== -1 && configArgIndex + 1 < process.argv.length) {
+    const configPath = process.argv[configArgIndex + 1];
+    try {
+      const configData = readFileSync(configPath, "utf8");
+      return JSON.parse(configData);
+    } catch (error) {
+      console.error(`Failed to load config file: ${configPath}`, error);
+      process.exit(1);
+    }
+  }
+
+  // Fallback to environment variables
+  dotenv.config();
+  return {
+    apiKey: process.env.API_KEY!,
+    apiSecretKey: process.env.API_SECRET_KEY!,
+    accessToken: process.env.ACCESS_TOKEN!,
+    accessTokenSecret: process.env.ACCESS_TOKEN_SECRET!,
+  };
+}
+
 // Start the server
-dotenv.config();
-
-const config = {
-  apiKey: process.env.API_KEY!,
-  apiSecretKey: process.env.API_SECRET_KEY!,
-  accessToken: process.env.ACCESS_TOKEN!,
-  accessTokenSecret: process.env.ACCESS_TOKEN_SECRET!
-};
-
+const config = loadConfig();
 const server = new TwitterServer(config);
-server.start().catch(error => {
-  console.error('Failed to start server:', error);
+server.start().catch((error) => {
+  console.error("Failed to start server:", error);
   process.exit(1);
 });

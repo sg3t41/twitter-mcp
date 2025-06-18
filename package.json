@@ -5,14 +5,14 @@
   "type": "module",
   "main": "build/index.js",
   "bin": {
-    "twitter-server": "./build/index.js"
+    "twitter-mcp": "./build/index.js"
   },
   "files": [
     "build",
     "README.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && chmod +x build/index.js && ln -sf $(pwd)/build/index.js ~/.local/bin/twitter-mcp",
     "start": "node build/index.js",
     "prepublishOnly": "npm run build"
   },
